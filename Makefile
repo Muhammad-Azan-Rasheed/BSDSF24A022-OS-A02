@@ -1,5 +1,7 @@
 CC ?= cc
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -O2
+VERSION ?= 1
+CPPFLAGS += -DLS_VERSION=$(VERSION)
 TARGET = bin/ls
 SOURCE = src/ls-v1.0.0.c
 OBJECT = obj/ls-v1.0.0.o
@@ -12,7 +14,7 @@ $(TARGET): $(OBJECT) | bin
 	$(CC) $(CFLAGS) -o $@ $^
 
 $(OBJECT): $(SOURCE) | obj
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 bin obj:
 	mkdir -p $@

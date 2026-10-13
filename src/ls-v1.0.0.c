@@ -1,6 +1,10 @@
 #define _DEFAULT_SOURCE
 #define _XOPEN_SOURCE 700
 
+#ifndef LS_VERSION
+#define LS_VERSION 6
+#endif
+
 #include <dirent.h>
 #include <errno.h>
 #include <getopt.h>
@@ -28,7 +32,9 @@
 typedef enum { DISPLAY_VERTICAL, DISPLAY_HORIZONTAL, DISPLAY_LONG } DisplayMode;
 typedef struct { char **items; size_t count; size_t capacity; size_t max_name; } NameList;
 
+#if LS_VERSION >= 6
 static int recursive_flag;
+#endif
 static bool color_enabled;
 
 static void free_names(NameList *list) {
@@ -53,18 +59,22 @@ static int add_name(NameList *list, const char *name) {
     return 0;
 }
 
+#if LS_VERSION >= 4
 static int compare_names(const void *left, const void *right) {
     const char *const *a = left;
     const char *const *b = right;
     return strcmp(*a, *b);
 }
+#endif
 
+#if LS_VERSION >= 2
 static int terminal_width(void) {
     struct winsize size;
     if (isatty(STDOUT_FILENO) && ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0 && size.ws_col > 0)
         return size.ws_col;
     return FALLBACK_WIDTH;
 }
+#endif
 
 static char *join_path(const char *directory, const char *name) {
     if (name[0] == '/') return strdup(name);
@@ -140,6 +150,7 @@ static void print_long(const char *directory, const NameList *list) {
     }
 }
 
+#if LS_VERSION >= 2
 static void print_vertical(const char *directory, const NameList *list) {
     if (!list->count) return;
     size_t cell = list->max_name + COLUMN_GAP;
@@ -161,7 +172,9 @@ static void print_vertical(const char *directory, const NameList *list) {
         putchar('\n');
     }
 }
+#endif
 
+#if LS_VERSION >= 3
 static void print_horizontal(const char *directory, const NameList *list) {
     if (!list->count) return;
     size_t cell = list->max_name + COLUMN_GAP;
@@ -180,6 +193,16 @@ static void print_horizontal(const char *directory, const NameList *list) {
     }
     putchar('\n');
 }
+#endif
+
+#if LS_VERSION < 2
+static void print_single_column(const char *directory, const NameList *list) {
+    for (size_t i = 0; i < list->count; ++i) {
+        print_name(directory, list->items[i]);
+        putchar('\n');
+    }
+}
+#endif
 
 static int read_names(const char *directory, NameList *list) {
     DIR *dp = opendir(directory);
@@ -194,7 +217,9 @@ static int read_names(const char *directory, NameList *list) {
     }
     if (errno) fprintf(stderr, "ls: error reading '%s': %s\n", directory, strerror(errno));
     closedir(dp);
+#if LS_VERSION >= 4
     qsort(list->items, list->count, sizeof(*list->items), compare_names);
+#endif
     return 0;
 }
 
@@ -203,9 +228,16 @@ static void do_ls(const char *directory, DisplayMode mode, bool show_header) {
     if (read_names(directory, &list) < 0) return;
     if (show_header) printf("%s:\n", directory);
     if (mode == DISPLAY_LONG) print_long(directory, &list);
+#if LS_VERSION >= 3
     else if (mode == DISPLAY_HORIZONTAL) print_horizontal(directory, &list);
+#endif
+#if LS_VERSION >= 2
     else print_vertical(directory, &list);
+#else
+    else print_single_column(directory, &list);
+#endif
 
+#if LS_VERSION >= 6
     if (recursive_flag) {
         for (size_t i = 0; i < list.count; ++i) {
             char *path = join_path(directory, list.items[i]);
@@ -217,33 +249,60 @@ static void do_ls(const char *directory, DisplayMode mode, bool show_header) {
             free(path);
         }
     }
+#endif
     free_names(&list);
 }
 
 int main(int argc, char **argv) {
     DisplayMode mode = DISPLAY_VERTICAL;
     int option;
-    while ((option = getopt(argc, argv, "lxR")) != -1) {
+#if LS_VERSION >= 6
+    const char *options = "lxR";
+#elif LS_VERSION >= 3
+    const char *options = "lx";
+#else
+    const char *options = "l";
+#endif
+    while ((option = getopt(argc, argv, options)) != -1) {
         if (option == 'l') mode = DISPLAY_LONG;
+#if LS_VERSION >= 3
         else if (option == 'x') mode = DISPLAY_HORIZONTAL;
+#endif
+#if LS_VERSION >= 6
         else if (option == 'R') recursive_flag = 1;
+#endif
         else { fprintf(stderr, "Usage: %s [-l] [-x] [-R] [directory ...]\n", argv[0]); return 2; }
     }
+#if LS_VERSION >= 5
     color_enabled = isatty(STDOUT_FILENO);
+#else
+    color_enabled = false;
+#endif
+#if LS_VERSION >= 6
     if (optind == argc) { do_ls(".", mode, recursive_flag != 0); return 0; }
+#else
+    if (optind == argc) { do_ls(".", mode, false); return 0; }
+#endif
     for (int i = optind; i < argc; ++i) {
         struct stat info;
         if (stat(argv[i], &info) == 0 && !S_ISDIR(info.st_mode)) {
             NameList one = {0};
             if (add_name(&one, argv[i]) == 0) {
+#if LS_VERSION >= 4
                 qsort(one.items, one.count, sizeof(*one.items), compare_names);
+#endif
                 if (mode == DISPLAY_LONG) print_long(".", &one);
                 else { print_name(".", argv[i]); putchar('\n'); }
             }
             free_names(&one);
         } else {
+#if LS_VERSION >= 6
             if (argc - optind > 1 && !recursive_flag) printf("%s:\n", argv[i]);
             do_ls(argv[i], mode, recursive_flag != 0);
+#else
+            if (argc - optind > 1) printf("%s:\n", argv[i]);
+            do_ls(argv[i], mode, false);
+#endif
             if (i + 1 < argc) putchar('\n');
         }
     }

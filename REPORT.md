@@ -66,4 +66,4 @@ The current working directory does not change during recursion. Calling `do_ls("
 
 ## Implementation notes
 
-This project is intended for a POSIX/Linux environment. The supplied starter was retained as the source filename and extended with the assignment's requested options and system calls. Build and run it with `make` on Linux; the current Windows workspace does not have `make` or a C compiler available.
+This project is intended for a POSIX/Linux environment. The supplied starter was retained as the source filename and extended with the assignment's requested options and system calls. Build and run it with `make` on Linux. The Makefile's `VERSION` setting selects the milestone behavior: 1 enables long listing, 2 enables vertical columns, 3 adds `-x`, 4 enables sorting, 5 enables color, and 6 enables recursion. Each feature branch defaults to its milestone; final `main` defaults to version 6.

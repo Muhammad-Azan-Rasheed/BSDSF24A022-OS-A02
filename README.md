@@ -10,7 +10,7 @@ On Linux or another POSIX environment with a C compiler and `make`:
 make
 ```
 
-The executable is written to `bin/ls`. Use `make clean` to remove generated files.
+The executable is written to `bin/ls`. Use `make clean` to remove generated files. The `VERSION` setting selects a milestone snapshot: use `make clean && make VERSION=1` through `make VERSION=6`.
 
 ## Usage
 
