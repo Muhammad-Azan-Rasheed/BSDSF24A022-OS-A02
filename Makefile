@@ -1,6 +1,6 @@
 CC ?= cc
 CFLAGS ?= -std=c11 -Wall -Wextra -Wpedantic -O2
-VERSION ?= 4
+VERSION ?= 5
 CPPFLAGS += -DLS_VERSION=$(VERSION)
 TARGET = bin/ls
 SOURCE = src/ls-v1.0.0.c
