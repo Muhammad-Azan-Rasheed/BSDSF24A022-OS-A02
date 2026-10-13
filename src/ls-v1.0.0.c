@@ -67,6 +67,7 @@ static int terminal_width(void) {
 }
 
 static char *join_path(const char *directory, const char *name) {
+    if (name[0] == '/') return strdup(name);
     size_t dlen = strlen(directory), nlen = strlen(name);
     bool slash = dlen > 0 && directory[dlen - 1] != '/';
     char *path = malloc(dlen + (slash ? 1 : 0) + nlen + 1);
@@ -123,9 +124,11 @@ static void print_long(const char *directory, const NameList *list) {
         }
         char permissions[11], date[32];
         mode_string(info.st_mode, permissions);
-        struct tm *when = localtime(&info.st_mtime);
-        if (when) strftime(date, sizeof(date), "%b %e %H:%M", when);
-        else strcpy(date, "??? ?? ??:??");
+        const char *timestamp = ctime(&info.st_mtime);
+        if (timestamp) {
+            snprintf(date, sizeof(date), "%s", timestamp);
+            date[strcspn(date, "\n")] = '\0';
+        } else strcpy(date, "??? ??? ?? ??:??:?? ????");
         struct passwd *owner = getpwuid(info.st_uid);
         struct group *group = getgrgid(info.st_gid);
         printf("%s %3lu %-8s %-8s %8lld %s ", permissions, (unsigned long)info.st_nlink,
